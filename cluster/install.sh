@@ -15,6 +15,8 @@ HELM_TIMEOUT=${HELM_TIMEOUT:-10m}
 IMAGE_PREFIX=${IMAGE_PREFIX:-}
 IMAGE_TAG=${IMAGE_TAG:-local}
 BUILD_IMAGES=${BUILD_IMAGES:-false}
+APPLY_MINIKUBE_DEPENDENCIES=${APPLY_MINIKUBE_DEPENDENCIES:-false}
+MINIKUBE_DEPENDENCIES_FILE=${MINIKUBE_DEPENDENCIES_FILE:-"$SCRIPT_DIR/minikube-dependencies.yaml"}
 
 load_env_file "$ENV_FILE"
 
@@ -109,8 +111,23 @@ require_kubernetes_secret "$NAMESPACE" litellm-master-key-secret
 require_kubernetes_secret "$NAMESPACE" litellm-runtime-secret
 require_kubernetes_secret "$NAMESPACE" litellm-writer-secret
 require_kubernetes_secret "$NAMESPACE" litellm-reader-secret
-require_kubernetes_secret "$NAMESPACE" litellm-redis-secret
-require_kubernetes_secret "$NAMESPACE" litellm-provider-secrets
+if [ -n "${REDIS_PASSWORD:-}" ]; then
+  require_kubernetes_secret "$NAMESPACE" litellm-redis-secret
+fi
+if [ "${#provider_secret_args[@]}" -gt 0 ]; then
+  require_kubernetes_secret "$NAMESPACE" litellm-provider-secrets
+fi
+
+if [ "$APPLY_MINIKUBE_DEPENDENCIES" = "true" ]; then
+  validate_file "$MINIKUBE_DEPENDENCIES_FILE"
+  kubectl -n "$NAMESPACE" apply -f "$MINIKUBE_DEPENDENCIES_FILE"
+  kubectl -n "$NAMESPACE" set image \
+    deployment/litellm-minikube-fake-provider \
+    fake-provider="$(image_repo fake-provider):$IMAGE_TAG"
+  kubectl -n "$NAMESPACE" rollout status deployment/litellm-minikube-postgres --timeout="$HELM_TIMEOUT"
+  kubectl -n "$NAMESPACE" rollout status deployment/litellm-minikube-redis --timeout="$HELM_TIMEOUT"
+  kubectl -n "$NAMESPACE" rollout status deployment/litellm-minikube-fake-provider --timeout="$HELM_TIMEOUT"
+fi
 
 helm upgrade --install "$RELEASE" "$PROXY_ROOT/helm/litellm" \
   --namespace "$NAMESPACE" \

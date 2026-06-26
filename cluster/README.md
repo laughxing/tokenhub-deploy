@@ -55,13 +55,15 @@ The chart currently exposes HPA settings but not PodDisruptionBudget values. Use
 
 | File | Purpose |
 | --- | --- |
-| [build-images.sh](build-images.sh) | Build gateway, backend, migrations, and UI images from source with a custom prefix/tag, optionally loading them into minikube |
+| [build-images.sh](build-images.sh) | Build gateway, backend, migrations, UI, and fake provider images from source with a custom prefix/tag, optionally loading them into minikube |
 | [values-ha-example.yaml](values-ha-example.yaml) | High availability values overlay for `TOKENHUB_PROXY_ROOT/helm/litellm`, pointing at locally built images |
+| [values-minikube.yaml](values-minikube.yaml) | Local minikube values overlay using local Postgres, Redis, and fake provider |
+| [minikube-dependencies.yaml](minikube-dependencies.yaml) | Local Postgres, Redis, and fake provider Deployments/Services for minikube |
 | [install.sh](install.sh) | Build (optional), Secret, Helm install, and readiness wrapper |
 
 ## Image build
 
-Build the component images from `tokenhub-proxy` (`TOKENHUB_PROXY_ROOT`). `IMAGE_PREFIX` is prepended to each image name and `IMAGE_TAG` sets the tag. Leave `IMAGE_PREFIX` empty for plain local names (`litellm-gateway:local`, `litellm-backend:local`, `litellm-migrations:local`, `litellm-ui:local`):
+Build the component images from `tokenhub-proxy` (`TOKENHUB_PROXY_ROOT`) and the fake provider image from `tokenhub-e2e` (`TOKENHUB_E2E_ROOT`). `IMAGE_PREFIX` is prepended to each image name and `IMAGE_TAG` sets the tag. Leave `IMAGE_PREFIX` empty for plain local names (`litellm-gateway:local`, `litellm-backend:local`, `litellm-migrations:local`, `litellm-ui:local`, `litellm-fake-provider:local`):
 
 ```bash
 IMAGE_PREFIX= IMAGE_TAG=local cluster/build-images.sh
@@ -87,6 +89,78 @@ cluster/build-images.sh
 ```
 
 The example values set `pullPolicy: IfNotPresent`, so locally present images are used without contacting a registry. Because these images are built locally, the upstream cosign verification flow does not apply; sign your own images if you need provenance
+
+## Minikube local loop
+
+Use this path to run the V1 local Kubernetes loop with fake provider, local Postgres, local Redis, gateway, backend, UI, and the migration Job. It is not a production topology; data is stored in ephemeral `emptyDir` volumes and is deleted with the namespace.
+
+Start minikube:
+
+```bash
+minikube start --driver=docker
+```
+
+Build component images and load them into minikube. This builds gateway, backend, migrations, UI, and fake provider images:
+
+```bash
+IMAGE_PREFIX= IMAGE_TAG=local LOAD_INTO_MINIKUBE=true cluster/build-images.sh
+```
+
+Install the local dependencies and Helm release:
+
+```bash
+export LITELLM_MASTER_KEY="sk-local-master-key"
+export LITELLM_SALT_KEY="sk-local-salt-key"
+export DB_USERNAME="litellm"
+export DB_PASSWORD="litellm-local-password"
+
+NAMESPACE=litellm \
+RELEASE=litellm \
+VALUES_FILE=cluster/values-minikube.yaml \
+IMAGE_TAG=local \
+APPLY_MINIKUBE_DEPENDENCIES=true \
+cluster/install.sh
+```
+
+Check the workload:
+
+```bash
+kubectl -n litellm get pods
+```
+
+Port-forward gateway and backend in separate terminals:
+
+```bash
+kubectl -n litellm port-forward svc/litellm-litellm-gateway 4000:4000
+kubectl -n litellm port-forward svc/litellm-litellm-backend 4001:4001
+```
+
+Verify the V1 loop:
+
+```bash
+curl -sS http://localhost:4000/v1/models \
+  -H "Authorization: Bearer ${LITELLM_MASTER_KEY}"
+
+curl -sS http://localhost:4001/key/generate \
+  -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"models":["deepseek-chat"],"max_budget":10,"rpm_limit":60,"tpm_limit":100000}'
+
+curl -sS http://localhost:4000/v1/chat/completions \
+  -H "Authorization: Bearer <virtual-key>" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"deepseek-chat","messages":[{"role":"user","content":"你好，简单介绍一下你自己"}]}'
+
+curl -sS "http://localhost:4001/spend/logs?request_id=<chat-request-id>" \
+  -H "Authorization: Bearer ${LITELLM_MASTER_KEY}"
+```
+
+Clean up:
+
+```bash
+helm -n litellm uninstall litellm
+kubectl delete namespace litellm
+```
 
 ## Required Secrets
 

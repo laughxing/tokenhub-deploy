@@ -1,0 +1,147 @@
+ingress:
+  enabled: false
+
+masterKey:
+  secretName: litellm-master-key-secret
+  secretKey: master-key
+
+database:
+  writer:
+    host: litellm-minikube-postgres
+    port: 5432
+    dbname: litellm
+    schema: public
+    useIAMAuth: false
+    passwordSecret:
+      name: litellm-writer-secret
+      usernameKey: username
+      passwordKey: password
+  reader:
+    host: ""
+
+redis:
+  cluster: false
+  host: litellm-minikube-redis
+  port: 6379
+  passwordSecret:
+    name: ""
+
+migrationJob:
+  enabled: true
+  image:
+    repository: litellm-migrations
+    tag: local
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  extraEnv:
+    - name: LITELLM_MODE
+      value: DEVELOPMENT
+    - name: LITELLM_SALT_KEY
+      valueFrom:
+        secretKeyRef:
+          name: litellm-runtime-secret
+          key: salt-key
+
+gateway:
+  logLevel: INFO
+  numWorkers: 1
+  image:
+    repository: litellm-gateway
+    tag: local
+    pullPolicy: IfNotPresent
+  config:
+    create: true
+    proxy_config:
+      model_list:
+        - model_name: deepseek-chat
+          litellm_params:
+            model: openai/fake-deepseek-chat
+            api_base: http://litellm-minikube-fake-provider:4010/v1
+            api_key: fake-provider-key
+      general_settings:
+        master_key: os.environ/LITELLM_MASTER_KEY
+        store_model_in_db: true
+        proxy_batch_write_at: 60
+        database_connection_pool_limit: 10
+      router_settings:
+        routing_strategy: simple-shuffle
+        redis_host: os.environ/REDIS_HOST
+        redis_port: os.environ/REDIS_PORT
+      litellm_settings:
+        request_timeout: 600
+        telemetry: false
+        drop_params: true
+        cache: true
+        cache_params:
+          type: redis
+          host: os.environ/REDIS_HOST
+          port: os.environ/REDIS_PORT
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 1
+  extraEnv:
+    - name: LITELLM_MODE
+      value: DEVELOPMENT
+    - name: LITELLM_SALT_KEY
+      valueFrom:
+        secretKeyRef:
+          name: litellm-runtime-secret
+          key: salt-key
+
+backend:
+  logLevel: INFO
+  image:
+    repository: litellm-backend
+    tag: local
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 1
+  extraEnv:
+    - name: LITELLM_MODE
+      value: DEVELOPMENT
+    - name: LITELLM_SALT_KEY
+      valueFrom:
+        secretKeyRef:
+          name: litellm-runtime-secret
+          key: salt-key
+
+ui:
+  backendUrl: http://localhost:4001
+  image:
+    repository: litellm-ui
+    tag: local
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 1
