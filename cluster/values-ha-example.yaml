@@ -1,0 +1,178 @@
+ingress:
+  enabled: true
+  className: nginx
+  host: litellm.example.internal
+  tls:
+    - secretName: litellm-tls
+      hosts:
+        - litellm.example.internal
+
+masterKey:
+  secretName: litellm-master-key-secret
+  secretKey: master-key
+
+database:
+  writer:
+    host: postgres-writer.example.internal
+    port: 5432
+    dbname: litellm
+    schema: public
+    useIAMAuth: false
+    passwordSecret:
+      name: litellm-writer-secret
+      usernameKey: username
+      passwordKey: password
+  reader:
+    host: postgres-reader.example.internal
+    port: 5432
+    dbname: litellm
+    schema: public
+    useIAMAuth: false
+    passwordSecret:
+      name: litellm-reader-secret
+      usernameKey: username
+      passwordKey: password
+
+redis:
+  cluster: true
+  host: redis-cluster.example.internal
+  port: 6379
+  passwordSecret:
+    name: litellm-redis-secret
+    passwordKey: password
+
+migrationJob:
+  enabled: true
+  image:
+    repository: litellm-migrations
+    tag: local
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  extraEnv:
+    - name: LITELLM_MODE
+      value: PRODUCTION
+    - name: LITELLM_SALT_KEY
+      valueFrom:
+        secretKeyRef:
+          name: litellm-runtime-secret
+          key: salt-key
+
+gateway:
+  logLevel: ERROR
+  numWorkers: 1
+  image:
+    repository: litellm-gateway
+    tag: local
+    pullPolicy: IfNotPresent
+  config:
+    create: true
+    proxy_config:
+      model_list:
+        - model_name: gpt-4o
+          litellm_params:
+            model: openai/gpt-4o
+            api_key: os.environ/OPENAI_API_KEY
+      general_settings:
+        master_key: os.environ/LITELLM_MASTER_KEY
+        store_model_in_db: true
+        proxy_batch_write_at: 60
+        database_connection_pool_limit: 10
+        disable_error_logs: true
+        use_redis_transaction_buffer: true
+      router_settings:
+        routing_strategy: simple-shuffle
+        redis_host: os.environ/REDIS_HOST
+        redis_port: os.environ/REDIS_PORT
+        redis_password: os.environ/REDIS_PASSWORD
+      litellm_settings:
+        request_timeout: 600
+        set_verbose: false
+        json_logs: true
+        cache: true
+        cache_params:
+          type: redis
+          host: os.environ/REDIS_HOST
+          port: os.environ/REDIS_PORT
+          password: os.environ/REDIS_PASSWORD
+  resources:
+    requests:
+      cpu: "1"
+      memory: 4Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+  hpa:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 80
+  extraEnv:
+    - name: LITELLM_MODE
+      value: PRODUCTION
+    - name: LITELLM_SALT_KEY
+      valueFrom:
+        secretKeyRef:
+          name: litellm-runtime-secret
+          key: salt-key
+    - name: LITELLM_LICENSE
+      valueFrom:
+        secretKeyRef:
+          name: litellm-runtime-secret
+          key: license
+          optional: true
+  envSecrets:
+    - litellm-provider-secrets
+
+backend:
+  logLevel: ERROR
+  image:
+    repository: litellm-backend
+    tag: local
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "1"
+      memory: 4Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 60
+  extraEnv:
+    - name: LITELLM_MODE
+      value: PRODUCTION
+    - name: LITELLM_SALT_KEY
+      valueFrom:
+        secretKeyRef:
+          name: litellm-runtime-secret
+          key: salt-key
+    - name: LITELLM_LICENSE
+      valueFrom:
+        secretKeyRef:
+          name: litellm-runtime-secret
+          key: license
+          optional: true
+  envSecrets:
+    - litellm-provider-secrets
+
+ui:
+  backendUrl: https://litellm.example.internal
+  image:
+    repository: litellm-ui
+    tag: local
+    pullPolicy: IfNotPresent
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 80

@@ -1,0 +1,83 @@
+routes:
+  - id: public-v1-api
+    name: public-v1-api
+    uri: /v1/*
+    upstream:
+      type: roundrobin
+      nodes:
+        "gateway:4000": 1
+
+  - id: public-health
+    name: public-health
+    uri: /health*
+    upstream:
+      type: roundrobin
+      nodes:
+        "gateway:4000": 1
+
+  - id: admin-ui
+    name: admin-ui
+    hosts:
+      - admin.localhost
+    uri: /ui*
+    priority: 100
+    upstream:
+      type: roundrobin
+      nodes:
+        "ui:3000": 1
+
+  - id: admin-ui-next-assets
+    name: admin-ui-next-assets
+    hosts:
+      - admin.localhost
+    uri: /_next/*
+    priority: 100
+    upstream:
+      type: roundrobin
+      nodes:
+        "ui:3000": 1
+
+  - id: admin-ui-litellm-assets
+    name: admin-ui-litellm-assets
+    hosts:
+      - admin.localhost
+    uri: /litellm-asset-prefix/*
+    priority: 100
+    upstream:
+      type: roundrobin
+      nodes:
+        "ui:3000": 1
+
+  - id: admin-ui-static-assets
+    name: admin-ui-static-assets
+    hosts:
+      - admin.localhost
+    uri: /assets/*
+    priority: 100
+    upstream:
+      type: roundrobin
+      nodes:
+        "ui:3000": 1
+
+  - id: admin-ui-favicon
+    name: admin-ui-favicon
+    hosts:
+      - admin.localhost
+    uri: /favicon.ico
+    priority: 100
+    upstream:
+      type: roundrobin
+      nodes:
+        "ui:3000": 1
+
+  - id: admin-backend
+    name: admin-backend
+    hosts:
+      - admin.localhost
+    uri: /*
+    priority: 10
+    upstream:
+      type: roundrobin
+      nodes:
+        "backend:4001": 1
+#END
