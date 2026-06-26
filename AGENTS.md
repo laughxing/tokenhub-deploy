@@ -2,6 +2,10 @@
 
 本仓库负责 TokenHub 部署与运维配置，包括 V1 本地平台栈、APISIX 配置、私有化 Compose、Kubernetes/Helm 和运行手册。
 
+## 开发阶段
+
+TokenHub 目前处于**内部开发期**。开发期间不需要考虑向前兼容，可优先采用最直接的设计与实现，不必为旧接口、旧数据格式或过渡方案保留额外兼容层。
+
 ## 开工前
 
 1. 先确认变更是否有已批准需求包，例如 `product/tokenhub-product/docs/roadmaps/v1/requirements/REQ-V1-xxx-*`。
