@@ -16,9 +16,12 @@ services:
       context: ${TOKENHUB_PROXY_ROOT:-../../../dev/tokenhub-proxy}
       dockerfile: gateway/Dockerfile
     depends_on:
-      - fake-provider
-      - db
-      - redis
+      fake-provider:
+        condition: service_started
+      migrations:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
     expose:
       - "4000"
     environment:
@@ -46,9 +49,12 @@ services:
       context: ${TOKENHUB_PROXY_ROOT:-../../../dev/tokenhub-proxy}
       dockerfile: backend/Dockerfile
     depends_on:
-      - fake-provider
-      - db
-      - redis
+      fake-provider:
+        condition: service_started
+      migrations:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
     expose:
       - "4001"
     environment:
@@ -80,7 +86,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - wget -qO- http://localhost:3000/healthz >/dev/null
+        - wget -qO- http://127.0.0.1:3000/healthz >/dev/null
       interval: 30s
       timeout: 10s
       retries: 3
@@ -99,6 +105,16 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  migrations:
+    build:
+      context: ${TOKENHUB_PROXY_ROOT:-../../../dev/tokenhub-proxy}
+      dockerfile: migrations/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://llmproxy:dbpassword9090@db:5432/litellm
 
   db:
     image: postgres:16
