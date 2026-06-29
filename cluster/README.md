@@ -42,7 +42,7 @@ This fork builds its own component images from source and does not pull the offi
 ## Prerequisites
 
 - Kubernetes cluster with Helm 3 (minikube works for local testing)
-- Docker with BuildKit to build the component images
+- Docker with BuildKit and the buildx CLI plugin to build the component images
 - External PostgreSQL writer, preferably with a reader endpoint for read routing
 - Redis 7 or Redis Cluster for cache, rate-limit state, router state, and high traffic buffering
 - TLS-capable ingress controller or cloud load balancer

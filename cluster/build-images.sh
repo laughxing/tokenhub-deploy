@@ -12,8 +12,18 @@ IMAGE_TAG=${IMAGE_TAG:-local}
 LOAD_INTO_MINIKUBE=${LOAD_INTO_MINIKUBE:-false}
 BUILD_UI=${BUILD_UI:-true}
 BUILD_FAKE_PROVIDER=${BUILD_FAKE_PROVIDER:-true}
+DOCKER_BUILDKIT=${DOCKER_BUILDKIT:-1}
 
 require_command docker
+if [ "$DOCKER_BUILDKIT" != "1" ]; then
+  echo "DOCKER_BUILDKIT=1 is required because component Dockerfiles use BuildKit mounts." >&2
+  exit 1
+fi
+if ! docker buildx version >/dev/null 2>&1; then
+  echo "Missing Docker buildx plugin required by BuildKit. Install docker-buildx or provide docker-buildx in ~/.docker/cli-plugins." >&2
+  exit 1
+fi
+export DOCKER_BUILDKIT
 
 image_repo() {
   local component=$1
