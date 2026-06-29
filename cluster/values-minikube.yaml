@@ -1,5 +1,14 @@
 ingress:
-  enabled: false
+  enabled: true
+  className: nginx
+  host: api.localhost
+
+tracing:
+  enabled: true
+  ingress:
+    enabled: true
+    className: nginx
+    host: trace.localhost
 
 masterKey:
   secretName: litellm-master-key-secret

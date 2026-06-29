@@ -1,0 +1,32 @@
+# REQ-V1-003 tracing overlay — merge with docker-compose.yml and pass --profile tracing.
+#
+#   LITELLM_OTEL_V2=true \
+#   OTEL_EXPORTER=otlp_http \
+#   OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318/v1/traces \
+#   OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=span_and_event \
+#   docker compose -f docker-compose.yml -f docker-compose.tracing.yml --profile tracing up --build
+
+services:
+  gateway:
+    environment:
+      LITELLM_OTEL_V2: ${LITELLM_OTEL_V2:-true}
+      OTEL_EXPORTER: ${OTEL_EXPORTER:-otlp_http}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318/v1/traces}
+      OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: ${OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT:-span_and_event}
+      OTEL_SERVICE_NAME: ${GATEWAY_OTEL_SERVICE_NAME:-litellm-gateway}
+    depends_on:
+      otel-collector:
+        condition: service_started
+        required: false
+
+  backend:
+    environment:
+      LITELLM_OTEL_V2: ${LITELLM_OTEL_V2:-true}
+      OTEL_EXPORTER: ${OTEL_EXPORTER:-otlp_http}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318/v1/traces}
+      OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: ${OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT:-span_and_event}
+      OTEL_SERVICE_NAME: ${BACKEND_OTEL_SERVICE_NAME:-litellm-backend}
+    depends_on:
+      otel-collector:
+        condition: service_started
+        required: false

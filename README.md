@@ -39,10 +39,36 @@ V1 平台本地栈（需已 clone 大仓内各子仓库）：
 
 ```bash
 export LITELLM_MASTER_KEY="sk-local-master-key"
+export LITELLM_SALT_KEY="sk-local-salt-key"
 cd platform
 docker compose -f docker-compose.yml up --build
 ```
 
 公开 API：`http://localhost:9080/v1`
+
+### 本地 tracing（REQ-V1-003）
+
+启动带 OpenTelemetry Collector 与 Jaeger 的可选 tracing 栈，并在 gateway/backend 启用 OTel v2 导出：
+
+```bash
+export LITELLM_MASTER_KEY="sk-local-master-key"
+export LITELLM_SALT_KEY="sk-local-salt-key"
+cd platform
+docker compose -f docker-compose.yml -f docker-compose.tracing.yml --profile tracing up --build
+```
+
+Jaeger UI：`http://localhost:16686`
+
+发起一次 fake provider 非流式调用后，可在 Jaeger 中按 trace id 或 service（`litellm-gateway`）查看 HTTP server span 与 LLM call span。示例：
+
+```bash
+curl http://localhost:9080/v1/chat/completions \
+  -H "Authorization: Bearer <virtual-key>" \
+  -H "traceparent: 00-11111111111111111111111111111111-2222222222222222-01" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"deepseek-chat","messages":[{"role":"user","content":"你好，简单介绍一下你自己"}]}'
+```
+
+然后在 Jaeger UI 搜索 trace id `11111111111111111111111111111111`。
 
 商用私有化部署见 [private/README.md](private/README.md)；集群部署见 [cluster/README.md](cluster/README.md)。

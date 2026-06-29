@@ -140,6 +140,30 @@ services:
       timeout: 3s
       retries: 10
 
+  otel-collector:
+    profiles: [tracing]
+    image: otel/opentelemetry-collector-contrib:0.100.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    expose:
+      - "4317"
+      - "4318"
+    depends_on:
+      jaeger:
+        condition: service_started
+
+  jaeger:
+    profiles: [tracing]
+    image: jaegertracing/all-in-one:1.57
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+    expose:
+      - "4317"
+      - "14250"
+
 volumes:
   platform_postgres_data:
   platform_redis_data:

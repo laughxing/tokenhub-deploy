@@ -153,11 +153,20 @@ kubectl -n "$NAMESPACE" rollout status "deployment/${RELEASE}-litellm-gateway" -
 kubectl -n "$NAMESPACE" rollout status "deployment/${RELEASE}-litellm-backend" --timeout="$HELM_TIMEOUT"
 kubectl -n "$NAMESPACE" rollout status "deployment/${RELEASE}-litellm-ui" --timeout="$HELM_TIMEOUT"
 
+if kubectl -n "$NAMESPACE" get deployment "${RELEASE}-litellm-otel-collector" >/dev/null 2>&1; then
+  kubectl -n "$NAMESPACE" rollout status "deployment/${RELEASE}-litellm-otel-collector" --timeout="$HELM_TIMEOUT"
+fi
+if kubectl -n "$NAMESPACE" get deployment "${RELEASE}-litellm-jaeger" >/dev/null 2>&1; then
+  kubectl -n "$NAMESPACE" rollout status "deployment/${RELEASE}-litellm-jaeger" --timeout="$HELM_TIMEOUT"
+fi
+
 cat <<EOF
 LiteLLM clustered deployment is ready (image prefix: ${IMAGE_PREFIX:-<none>}, tag: ${IMAGE_TAG}).
 
 Port-forward for local verification:
   kubectl -n ${NAMESPACE} port-forward svc/${RELEASE}-litellm-gateway 4000:4000
+
+When tracing is enabled in values, open Jaeger UI via tracing.ingress.host (for example http://trace.localhost on minikube).
 
 Health:
   curl -sS http://localhost:4000/health/readiness

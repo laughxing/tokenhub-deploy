@@ -92,12 +92,13 @@ The example values set `pullPolicy: IfNotPresent`, so locally present images are
 
 ## Minikube local loop
 
-Use this path to run the V1 local Kubernetes loop with fake provider, local Postgres, local Redis, gateway, backend, UI, and the migration Job. It is not a production topology; data is stored in ephemeral `emptyDir` volumes and is deleted with the namespace.
+Use this path to run the V1 local Kubernetes loop with fake provider, local Postgres, local Redis, gateway, backend, UI, migration Job, and **default request-level tracing** (OpenTelemetry Collector + Jaeger). It is not a production topology; data is stored in ephemeral `emptyDir` volumes and is deleted with the namespace.
 
 Start minikube:
 
 ```bash
 minikube start --driver=docker
+minikube addons enable ingress
 ```
 
 Build component images and load them into minikube. This builds gateway, backend, migrations, UI, and fake provider images:
@@ -126,34 +127,36 @@ Check the workload:
 
 ```bash
 kubectl -n litellm get pods
+kubectl -n litellm get ingress
 ```
 
-Port-forward gateway and backend in separate terminals:
+The minikube values enable:
+
+- LLM API ingress at `http://api.localhost`
+- Jaeger admin/ops ingress at `http://trace.localhost` (not routed through the LiteLLM gateway data plane)
+
+Verify the V1 loop and tracing:
 
 ```bash
-kubectl -n litellm port-forward svc/litellm-litellm-gateway 4000:4000
-kubectl -n litellm port-forward svc/litellm-litellm-backend 4001:4001
-```
-
-Verify the V1 loop:
-
-```bash
-curl -sS http://localhost:4000/v1/models \
+curl -sS http://api.localhost/v1/models \
   -H "Authorization: Bearer ${LITELLM_MASTER_KEY}"
 
-curl -sS http://localhost:4001/key/generate \
+curl -sS http://api.localhost/key/generate \
   -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
   -H "Content-Type: application/json" \
   -d '{"models":["deepseek-chat"],"max_budget":10,"rpm_limit":60,"tpm_limit":100000}'
 
-curl -sS http://localhost:4000/v1/chat/completions \
+curl -sS http://api.localhost/v1/chat/completions \
   -H "Authorization: Bearer <virtual-key>" \
+  -H "traceparent: 00-11111111111111111111111111111111-2222222222222222-01" \
   -H "Content-Type: application/json" \
   -d '{"model":"deepseek-chat","messages":[{"role":"user","content":"你好，简单介绍一下你自己"}]}'
 
-curl -sS "http://localhost:4001/spend/logs?request_id=<chat-request-id>" \
+curl -sS "http://api.localhost/spend/logs?request_id=<chat-request-id>" \
   -H "Authorization: Bearer ${LITELLM_MASTER_KEY}"
 ```
+
+Open `http://trace.localhost` to query the trace in Jaeger UI (search trace id `11111111111111111111111111111111` or service `litellm-gateway`).
 
 Clean up:
 
