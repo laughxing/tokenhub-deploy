@@ -99,11 +99,34 @@ export REDIS_PASSWORD=replace-me OPENAI_API_KEY=replace-me
 VALUES_FILES="k8s/values/base.yaml k8s/values/production.yaml k8s/values/overlays/apisix.yaml k8s/values/overlays/production-apisix.yaml" \
   k8s/scripts/install.sh
 
-API_HOST=litellm.example.internal ADMIN_HOST=admin.example.internal \
+API_HOST=api.example.com \
+ADMIN_HOST=admin.example.internal \
+API_TLS_SECRET=tokenhub-api-tls \
+ADMIN_TLS_SECRET=tokenhub-admin-tls \
+ADMIN_ALLOWED_IPS="10.0.0.0/8,192.168.0.0/16" \
   k8s/scripts/install-apisix.sh
 ```
 
 Use your edited production values file instead of the in-repo example when endpoints differ.
+
+Production edge defaults:
+
+- `API_HOST` is the public LLM API host and is the only host bound to public `/v1/*`, `/health*`, and `/metrics` APISIX routes.
+- `ADMIN_HOST` is for LiteLLM UI/backend only. Keep it on private DNS/VPN or set `ADMIN_ALLOWED_IPS` to operator CIDRs; use mTLS/OIDC/load-balancer policy if your environment provides a stronger control.
+- `API_TLS_SECRET` and `ADMIN_TLS_SECRET` add TLS blocks to the APISIX Ingress. Leave them unset only for local or explicitly TLS-terminated upstream environments.
+- Public APISIX routes expose configurable rate limit, request body size, and upstream timeout defaults via `PUBLIC_RATE_LIMIT_*`, `PUBLIC_MAX_BODY_SIZE_BYTES`, and `UPSTREAM_*_TIMEOUT_SECONDS`.
+
+Render APISIX without applying:
+
+```bash
+DRY_RUN=true \
+  API_HOST=api.example.com \
+  ADMIN_HOST=admin.example.internal \
+  API_TLS_SECRET=tokenhub-api-tls \
+  ADMIN_TLS_SECRET=tokenhub-admin-tls \
+  ADMIN_ALLOWED_IPS="10.0.0.0/8,192.168.0.0/16" \
+  k8s/scripts/install-apisix.sh
+```
 
 Or without APISIX (Kubernetes Ingress only — less flexible routing):
 
@@ -117,7 +140,7 @@ VALUES_FILES="k8s/values/base.yaml k8s/values/production.yaml" k8s/scripts/insta
 | --- | --- | --- |
 | Install script | `local-install.sh` | `install.sh` |
 | Values merge | `base` + `local-deps` + `minikube` + `apisix` | `base` + `production` + `apisix` |
-| Edge routing | APISIX @ `api.localhost` / `admin.localhost` | APISIX @ your API/admin DNS |
+| Edge routing | APISIX @ `api.localhost` / `admin.localhost` | APISIX @ public API DNS + restricted admin DNS |
 | Ops Ingress | `trace.localhost`, `k8s.localhost` | Jaeger / Headlamp on your DNS |
 | Local dependencies | `APPLY_LOCAL_DEPENDENCIES=true` (default in local-install) | Do not apply |
 | Database / Redis | In-cluster `litellm-local-*` Services | External managed endpoints in production values |
