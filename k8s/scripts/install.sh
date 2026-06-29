@@ -2,27 +2,34 @@
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+K8S_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 
-source "$SCRIPT_DIR/../scripts/common/preflight.sh"
-source "$SCRIPT_DIR/../scripts/common/paths.sh"
-PROXY_ROOT=$(resolve_tokenhub_proxy_root "$SCRIPT_DIR")
+source "$K8S_ROOT/../scripts/common/preflight.sh"
+source "$K8S_ROOT/../scripts/common/paths.sh"
+PROXY_ROOT=$(resolve_tokenhub_proxy_root "$K8S_ROOT")
 
-ENV_FILE=${ENV_FILE:-"$SCRIPT_DIR/.env"}
+ENV_FILE=${ENV_FILE:-"$K8S_ROOT/.env"}
 NAMESPACE=${NAMESPACE:-litellm}
 RELEASE=${RELEASE:-litellm}
-VALUES_FILE=${VALUES_FILE:-"$SCRIPT_DIR/values-ha-example.yaml"}
 HELM_TIMEOUT=${HELM_TIMEOUT:-10m}
 IMAGE_PREFIX=${IMAGE_PREFIX:-}
 IMAGE_TAG=${IMAGE_TAG:-local}
 BUILD_IMAGES=${BUILD_IMAGES:-false}
-APPLY_MINIKUBE_DEPENDENCIES=${APPLY_MINIKUBE_DEPENDENCIES:-false}
-MINIKUBE_DEPENDENCIES_FILE=${MINIKUBE_DEPENDENCIES_FILE:-"$SCRIPT_DIR/minikube-dependencies.yaml"}
+APPLY_LOCAL_DEPENDENCIES=${APPLY_LOCAL_DEPENDENCIES:-false}
+LOCAL_DEPENDENCIES_FILE=${LOCAL_DEPENDENCIES_FILE:-"$K8S_ROOT/dependencies/local/manifests.yaml"}
+
+if [ -z "${VALUES_FILES:-}" ]; then
+  VALUES_FILES="$K8S_ROOT/values/base.yaml $K8S_ROOT/values/production.yaml"
+fi
 
 load_env_file "$ENV_FILE"
 
 require_command kubectl
 require_command helm
-validate_file "$VALUES_FILE"
+
+for values_file in $VALUES_FILES; do
+  validate_file "$values_file"
+done
 
 if [ -n "${LITELLM_MASTER_KEY:-}" ]; then
   validate_master_key "$LITELLM_MASTER_KEY"
@@ -118,20 +125,25 @@ if [ "${#provider_secret_args[@]}" -gt 0 ]; then
   require_kubernetes_secret "$NAMESPACE" litellm-provider-secrets
 fi
 
-if [ "$APPLY_MINIKUBE_DEPENDENCIES" = "true" ]; then
-  validate_file "$MINIKUBE_DEPENDENCIES_FILE"
-  kubectl -n "$NAMESPACE" apply -f "$MINIKUBE_DEPENDENCIES_FILE"
+if [ "$APPLY_LOCAL_DEPENDENCIES" = "true" ]; then
+  validate_file "$LOCAL_DEPENDENCIES_FILE"
+  kubectl -n "$NAMESPACE" apply -f "$LOCAL_DEPENDENCIES_FILE"
   kubectl -n "$NAMESPACE" set image \
-    deployment/litellm-minikube-fake-provider \
+    deployment/litellm-local-fake-provider \
     fake-provider="$(image_repo fake-provider):$IMAGE_TAG"
-  kubectl -n "$NAMESPACE" rollout status deployment/litellm-minikube-postgres --timeout="$HELM_TIMEOUT"
-  kubectl -n "$NAMESPACE" rollout status deployment/litellm-minikube-redis --timeout="$HELM_TIMEOUT"
-  kubectl -n "$NAMESPACE" rollout status deployment/litellm-minikube-fake-provider --timeout="$HELM_TIMEOUT"
+  kubectl -n "$NAMESPACE" rollout status deployment/litellm-local-postgres --timeout="$HELM_TIMEOUT"
+  kubectl -n "$NAMESPACE" rollout status deployment/litellm-local-redis --timeout="$HELM_TIMEOUT"
+  kubectl -n "$NAMESPACE" rollout status deployment/litellm-local-fake-provider --timeout="$HELM_TIMEOUT"
 fi
+
+helm_values_args=()
+for values_file in $VALUES_FILES; do
+  helm_values_args+=(--values "$values_file")
+done
 
 helm upgrade --install "$RELEASE" "$PROXY_ROOT/helm/litellm" \
   --namespace "$NAMESPACE" \
-  --values "$VALUES_FILE" \
+  "${helm_values_args[@]}" \
   --set gateway.image.repository="$(image_repo gateway)" \
   --set gateway.image.tag="$IMAGE_TAG" \
   --set backend.image.repository="$(image_repo backend)" \
@@ -161,12 +173,12 @@ if kubectl -n "$NAMESPACE" get deployment "${RELEASE}-litellm-jaeger" >/dev/null
 fi
 
 cat <<EOF
-LiteLLM clustered deployment is ready (image prefix: ${IMAGE_PREFIX:-<none>}, tag: ${IMAGE_TAG}).
+LiteLLM Kubernetes deployment is ready (image prefix: ${IMAGE_PREFIX:-<none>}, tag: ${IMAGE_TAG}).
 
 Port-forward for local verification:
   kubectl -n ${NAMESPACE} port-forward svc/${RELEASE}-litellm-gateway 4000:4000
 
-When tracing is enabled in values, open Jaeger UI via tracing.ingress.host (for example http://trace.localhost on minikube).
+When tracing is enabled in values, open Jaeger UI via tracing.ingress.host.
 
 Health:
   curl -sS http://localhost:4000/health/readiness

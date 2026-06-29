@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: litellm-minikube-postgres
+  name: litellm-local-postgres
   labels:
-    app.kubernetes.io/name: litellm-minikube-postgres
+    app.kubernetes.io/name: litellm-local-postgres
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: litellm-minikube-postgres
+      app.kubernetes.io/name: litellm-local-postgres
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: litellm-minikube-postgres
+        app.kubernetes.io/name: litellm-local-postgres
     spec:
       containers:
         - name: postgres
@@ -53,12 +53,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: litellm-minikube-postgres
+  name: litellm-local-postgres
   labels:
-    app.kubernetes.io/name: litellm-minikube-postgres
+    app.kubernetes.io/name: litellm-local-postgres
 spec:
   selector:
-    app.kubernetes.io/name: litellm-minikube-postgres
+    app.kubernetes.io/name: litellm-local-postgres
   ports:
     - name: postgres
       port: 5432
@@ -67,18 +67,18 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: litellm-minikube-redis
+  name: litellm-local-redis
   labels:
-    app.kubernetes.io/name: litellm-minikube-redis
+    app.kubernetes.io/name: litellm-local-redis
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: litellm-minikube-redis
+      app.kubernetes.io/name: litellm-local-redis
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: litellm-minikube-redis
+        app.kubernetes.io/name: litellm-local-redis
     spec:
       containers:
         - name: redis
@@ -97,12 +97,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: litellm-minikube-redis
+  name: litellm-local-redis
   labels:
-    app.kubernetes.io/name: litellm-minikube-redis
+    app.kubernetes.io/name: litellm-local-redis
 spec:
   selector:
-    app.kubernetes.io/name: litellm-minikube-redis
+    app.kubernetes.io/name: litellm-local-redis
   ports:
     - name: redis
       port: 6379
@@ -111,18 +111,18 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: litellm-minikube-fake-provider
+  name: litellm-local-fake-provider
   labels:
-    app.kubernetes.io/name: litellm-minikube-fake-provider
+    app.kubernetes.io/name: litellm-local-fake-provider
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: litellm-minikube-fake-provider
+      app.kubernetes.io/name: litellm-local-fake-provider
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: litellm-minikube-fake-provider
+        app.kubernetes.io/name: litellm-local-fake-provider
     spec:
       containers:
         - name: fake-provider
@@ -141,12 +141,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: litellm-minikube-fake-provider
+  name: litellm-local-fake-provider
   labels:
-    app.kubernetes.io/name: litellm-minikube-fake-provider
+    app.kubernetes.io/name: litellm-local-fake-provider
 spec:
   selector:
-    app.kubernetes.io/name: litellm-minikube-fake-provider
+    app.kubernetes.io/name: litellm-local-fake-provider
   ports:
     - name: http
       port: 4010

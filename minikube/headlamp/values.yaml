@@ -1,0 +1,25 @@
+# Minikube-only Headlamp overlay. Installed via minikube/scripts/install-headlamp.sh.
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hosts:
+    - host: k8s.localhost
+      paths:
+        - path: /
+          type: Prefix
+
+config:
+  inCluster: true
+
+clusterRoleBinding:
+  create: true
+  clusterRoleName: cluster-admin
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

@@ -1,0 +1,77 @@
+# Minikube-only overlay: localhost ingress hosts, dev mode, single-replica sizing.
+# Merge after base.yaml and local-deps.yaml via k8s/scripts/local-install.sh.
+
+ingress:
+  enabled: true
+  className: nginx
+  host: api.localhost
+
+tracing:
+  ingress:
+    host: trace.localhost
+
+migrationJob:
+  extraEnv:
+    - name: LITELLM_MODE
+      value: DEVELOPMENT
+    - name: LITELLM_SALT_KEY
+      valueFrom:
+        secretKeyRef:
+          name: litellm-runtime-secret
+          key: salt-key
+
+gateway:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 1
+  extraEnv:
+    - name: LITELLM_MODE
+      value: DEVELOPMENT
+    - name: LITELLM_SALT_KEY
+      valueFrom:
+        secretKeyRef:
+          name: litellm-runtime-secret
+          key: salt-key
+
+backend:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 1
+  extraEnv:
+    - name: LITELLM_MODE
+      value: DEVELOPMENT
+    - name: LITELLM_SALT_KEY
+      valueFrom:
+        secretKeyRef:
+          name: litellm-runtime-secret
+          key: salt-key
+
+ui:
+  backendUrl: http://localhost:4001
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 1

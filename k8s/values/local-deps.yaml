@@ -1,0 +1,33 @@
+# Points LiteLLM at optional in-cluster dependencies from k8s/dependencies/local/.
+# Apply those manifests only for local/dev clusters; skip on production.
+
+database:
+  writer:
+    host: litellm-local-postgres
+    port: 5432
+    dbname: litellm
+    schema: public
+    useIAMAuth: false
+    passwordSecret:
+      name: litellm-writer-secret
+      usernameKey: username
+      passwordKey: password
+  reader:
+    host: ""
+
+redis:
+  cluster: false
+  host: litellm-local-redis
+  port: 6379
+  passwordSecret:
+    name: ""
+
+gateway:
+  config:
+    proxy_config:
+      model_list:
+        - model_name: deepseek-chat
+          litellm_params:
+            model: openai/fake-deepseek-chat
+            api_base: http://litellm-local-fake-provider:4010/v1
+            api_key: fake-provider-key
