@@ -1,0 +1,6 @@
+# Disable LiteLLM chart Ingress when APISIX is the edge router.
+ingress:
+  enabled: false
+
+ui:
+  backendUrl: http://admin.localhost

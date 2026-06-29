@@ -1,0 +1,3 @@
+# Production APISIX overlay — merge with production.yaml when using APISIX edge.
+ui:
+  backendUrl: https://admin.example.internal

@@ -1,10 +1,5 @@
-# Minikube-only overlay: localhost ingress hosts, dev mode, single-replica sizing.
-# Merge after base.yaml and local-deps.yaml via k8s/scripts/local-install.sh.
-
-ingress:
-  enabled: true
-  className: nginx
-  host: api.localhost
+# Minikube-only overlay: dev mode, single-replica sizing, Jaeger ingress host.
+# LLM API ingress is disabled by overlays/apisix.yaml; APISIX exposes api.localhost / admin.localhost.
 
 tracing:
   ingress:
@@ -63,7 +58,6 @@ backend:
           key: salt-key
 
 ui:
-  backendUrl: http://localhost:4001
   resources:
     requests:
       cpu: 100m

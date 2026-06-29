@@ -40,9 +40,10 @@ NAMESPACE=litellm RELEASE=litellm IMAGE_TAG=local \
   k8s/scripts/local-install.sh
 ```
 
-- LLM API：`http://api.localhost/v1`
+- LLM API：`http://api.localhost/v1`（经 APISIX）
+- Admin UI：`http://admin.localhost/ui`（经 APISIX）
 - Jaeger UI：`http://trace.localhost`
-- Headlamp（K8s 运维 UI）：`http://k8s.localhost`
+- Headlamp：`http://k8s.localhost`
 
 详细说明见 [k8s/README.md](k8s/README.md) 与 [minikube/README.md](minikube/README.md)。
 

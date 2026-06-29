@@ -15,7 +15,7 @@ minikube start --driver=docker
 minikube addons enable ingress
 ```
 
-Ingress uses `api.localhost`, `trace.localhost`, and `k8s.localhost` (Headlamp). On Linux with minikube tunnel or `/etc/hosts` pointing `127.0.0.1` at those names, requests reach the nginx ingress controller.
+Ingress uses `api.localhost`, `admin.localhost`, `trace.localhost`, and `k8s.localhost`. Public LLM traffic and admin UI/API go through **APISIX** on `api.localhost` / `admin.localhost`.
 
 ## Build and load images
 
@@ -45,7 +45,7 @@ NAMESPACE=litellm RELEASE=litellm IMAGE_TAG=local \
   k8s/scripts/local-install.sh
 ```
 
-This applies in-cluster Postgres, Redis, and fake provider from `k8s/dependencies/local/manifests.yaml`, installs the Helm release with `base` + `local-deps` + `minikube` overlay values, and installs **Headlamp** at `http://k8s.localhost` (skip with `INSTALL_HEADLAMP=false`).
+This applies local dependencies, LiteLLM (Helm), **APISIX** edge gateway, and **Headlamp** (`INSTALL_APISIX=false` / `INSTALL_HEADLAMP=false` to skip).
 
 ## Smoke test
 
@@ -53,7 +53,7 @@ This applies in-cluster Postgres, Redis, and fake provider from `k8s/dependencie
 curl -sS http://api.localhost/v1/models \
   -H "Authorization: Bearer ${LITELLM_MASTER_KEY}"
 
-curl -sS http://api.localhost/key/generate \
+curl -sS http://admin.localhost/key/generate \
   -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
   -H "Content-Type: application/json" \
   -d '{"models":["deepseek-chat"],"max_budget":10,"rpm_limit":60,"tpm_limit":100000}'
@@ -66,6 +66,14 @@ curl -sS http://api.localhost/v1/chat/completions \
 ```
 
 Jaeger UI: `http://trace.localhost` — search trace id `11111111111111111111111111111111`.
+
+## APISIX edge gateway
+
+Complex host/path routing lives in [../k8s/apisix/routes.yaml.tpl](../k8s/apisix/routes.yaml.tpl). Re-apply after edits:
+
+```bash
+k8s/scripts/install-apisix.sh
+```
 
 ## Kubernetes ops UI (Headlamp)
 
@@ -81,7 +89,8 @@ The script prints a **login token** for the Headlamp ServiceAccount `headlamp` (
 
 | URL | Purpose |
 | --- | --- |
-| `http://api.localhost` | LiteLLM LLM API + management |
+| `http://api.localhost` | LiteLLM LLM API (via APISIX) |
+| `http://admin.localhost` | Admin UI and management API (via APISIX) |
 | `http://trace.localhost` | Jaeger trace query |
 | `http://k8s.localhost` | Headlamp cluster ops UI |
 
