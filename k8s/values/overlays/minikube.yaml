@@ -16,6 +16,16 @@ migrationJob:
           key: salt-key
 
 gateway:
+  config:
+    proxy_config:
+      general_settings:
+        # Keep V2 revoke acceptance deterministic in the split gateway/backend
+        # topology while avoiding a production default change.
+        user_api_key_cache_ttl: 5
+      litellm_settings:
+        # Share virtual-key auth cache through Redis so backend key deletion can
+        # invalidate gateway auth state in the split local deployment.
+        enable_redis_auth_cache: true
   resources:
     requests:
       cpu: 250m

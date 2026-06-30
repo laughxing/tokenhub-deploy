@@ -13,6 +13,8 @@ IMAGE_TAG=${IMAGE_TAG:-local}
 LOAD_INTO_MINIKUBE=${LOAD_INTO_MINIKUBE:-false}
 BUILD_UI=${BUILD_UI:-true}
 BUILD_FAKE_PROVIDER=${BUILD_FAKE_PROVIDER:-true}
+BUILD_WEB=${BUILD_WEB:-true}
+WEB_PUBLIC_API_BASE_URL=${WEB_PUBLIC_API_BASE_URL:-http://api.localhost}
 DOCKER_BUILDKIT=${DOCKER_BUILDKIT:-1}
 
 require_command docker
@@ -62,6 +64,24 @@ fi
 if [ "$BUILD_FAKE_PROVIDER" = "true" ]; then
   E2E_ROOT=$(resolve_tokenhub_e2e_root "$K8S_ROOT")
   build_one "$E2E_ROOT" fake-provider fake_provider/Dockerfile
+fi
+
+if [ "$BUILD_WEB" = "true" ]; then
+  WEB_ROOT=$(resolve_tokenhub_web_root "$K8S_ROOT")
+  if [ -n "$IMAGE_PREFIX" ]; then
+    WEB_REF="${IMAGE_PREFIX}/tokenhub-web:${IMAGE_TAG}"
+  else
+    WEB_REF="tokenhub-web:${IMAGE_TAG}"
+  fi
+  docker build \
+    -f "$WEB_ROOT/Dockerfile" \
+    --build-arg "VITE_PUBLIC_API_BASE_URL=${WEB_PUBLIC_API_BASE_URL}" \
+    -t "$WEB_REF" "$WEB_ROOT"
+  if [ "$LOAD_INTO_MINIKUBE" = "true" ]; then
+    require_command minikube
+    minikube image load "$WEB_REF"
+  fi
+  echo "$WEB_REF"
 fi
 
 cat <<EOF

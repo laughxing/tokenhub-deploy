@@ -173,4 +173,19 @@ ${ADMIN_ACCESS_PLUGINS}
         read: ${UPSTREAM_READ_TIMEOUT_SECONDS}
       nodes:
         "${BACKEND_UPSTREAM}": 1
+
+  - id: web-app
+    name: web-app
+    hosts:
+      - ${WEB_HOST}
+    uri: /*
+    priority: 10
+    upstream:
+      type: roundrobin
+      timeout:
+        connect: ${UPSTREAM_CONNECT_TIMEOUT_SECONDS}
+        send: ${UPSTREAM_SEND_TIMEOUT_SECONDS}
+        read: ${UPSTREAM_READ_TIMEOUT_SECONDS}
+      nodes:
+        "${WEB_UPSTREAM}": 1
 #END
